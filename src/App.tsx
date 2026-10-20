@@ -426,6 +426,35 @@ export default function App() {
     return () => document.removeEventListener('pointerdown', tap)
   }, [tour])
 
+  // the phone's How I see you sheet sits above the tour card, so it needs the card's height
+  useEffect(() => {
+    const card = tour === null ? null : document.querySelector<HTMLElement>('.guide--tour')
+    const root = document.documentElement.style
+    if (!card) { root.removeProperty('--tour-h'); return }
+    const ro = new ResizeObserver(() => root.setProperty('--tour-h', `${card.offsetHeight}px`))
+    ro.observe(card)
+    return () => ro.disconnect()
+  }, [tour])
+
+  // On the path step of the walk-through, the row of pieces plays through once so you can see
+  // what's past the edge, then settles back on the first. Touching it hands control back.
+  useEffect(() => {
+    if (tour !== 1 || matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const row = document.querySelector<HTMLElement>('.path-wrap .story, .path-wrap .toolkit')
+    if (!row || row.scrollWidth <= row.clientWidth + 4) return
+    const cards = [...row.children] as HTMLElement[]
+    const stops = cards.map((c) => Math.min(c.offsetLeft - cards[0].offsetLeft, row.scrollWidth - row.clientWidth))
+      .filter((x, i, a) => i === 0 || x > a[i - 1])
+    const timers: number[] = []
+    let stopped = false
+    const stop = () => { stopped = true; timers.forEach(clearTimeout) }
+    const go = (x: number) => { if (!stopped) row.scrollTo({ left: x, behavior: 'smooth' }) }
+    stops.slice(1).forEach((x, i) => timers.push(window.setTimeout(() => go(x), 900 + i * 1100)))
+    timers.push(window.setTimeout(() => go(0), 900 + (stops.length - 1) * 1100 + 400))
+    row.addEventListener('pointerdown', stop, { once: true })
+    return () => { stop(); row.removeEventListener('pointerdown', stop) }
+  }, [tour])
+
   const head: Head =
     phase === 'explore' ? {
       status: 'Getting to know you',

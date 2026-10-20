@@ -1283,3 +1283,29 @@ body:has(.guide--tour) .you-sheet { bottom: 250px; max-height: calc(100dvh - 330
 .who-pop__t b { font-size: 13.5px; font-weight: 650; }
 .who-pop__t small { overflow: hidden; color: var(--faint); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
 .who-pop__note { margin: 4px 8px 4px; padding-top: 8px; border-top: 1px solid var(--track); color: var(--faint); font-size: 11.5px; line-height: 1.35; }
+
+/* what you're changing is named in full, never cut off */
+.gbub__head { align-items: flex-start; }
+.gbub__head .gbub__orb { margin-top: 3px; }
+.gbub__head b { overflow: visible; text-overflow: clip; white-space: normal; text-wrap: pretty; }
+.cask__pieceText b { display: block; -webkit-line-clamp: unset; overflow: visible; }
+
+@media (max-width: 760px) {
+  /* the tour card reads left to right across its full width */
+  .guide--tour { align-items: stretch; }
+  .guide--tour .guide__body { width: 100%; }
+  .guide--tour .tour__btns { width: 100%; }
+  .guide--tour .tour__dots { justify-self: start; }
+
+  /* How I see you sits just above the tour card, whatever height the card is */
+  body:has(.guide--tour) .you-sheet { bottom: calc(var(--tour-h, 238px) + 24px + env(safe-area-inset-bottom)); max-height: calc(100dvh - var(--tour-h, 238px) - 104px); }
+
+  /* room to breathe on the path: guide line, step title, chips and cards each get their own space */
+  .stage:has(.ready[data-mtab]) { gap: 20px; padding-bottom: 36px; -webkit-mask-image: linear-gradient(#000 calc(100% - 28px), transparent); mask-image: linear-gradient(#000 calc(100% - 28px), transparent); }
+  .ready[data-mtab] .path { gap: 16px; padding: 18px 18px 20px; }
+  .ready[data-mtab] .path__head { gap: 6px; }
+  .ready[data-mtab] .path__chips { margin-top: 6px; }
+}
+@media (max-width: 760px) {
+  .path__head p { display: block; overflow: visible; -webkit-line-clamp: unset; }
+}
