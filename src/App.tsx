@@ -1,15 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, LayoutGroup, motion } from 'framer-motion'
 import { Menu } from 'lucide-react'
 import { checksFor, factsFor, personaRowsFor, suggestionsFor, type Changes, type Seen } from './aboutYou'
 import { lessons, lessonById, minutesOf, type Lesson } from './data'
+import { briefOf } from './materials'
 import {
   GOAL_SHORT, LEVEL_GUESS, LEVEL_SHORT, NO_ALTERNATIVE, REASON, SIGNAL_SAID, SWAP_CAUSE, SWAP_SAY, SWAP_WHY,
   REWORK_STEP_MS, WEEK, WORK_SAY, destination, sayChanges, tourSteps, type Head, type Offline,
 } from './guide'
 import { PHONE, ThemeContext, useMedia, useTimers } from './hooks'
 import {
-  GOAL_LABEL, buildPath, guessWork, milestones, rank, readWords, rejectReason, whyChips, workOf,
+  GOAL_LABEL, buildPath, pathLength, guessWork, milestones, rank, readWords, rejectReason, whyChips, workOf,
   type GoalKey, type Guessed, type Level, type Profile, type Why, type WorkAnswer,
 } from './model'
 import {
@@ -18,6 +20,7 @@ import {
 } from './plan'
 import { lowerFirst, lowerKeepAI, plural } from './text'
 import { AboutBar } from './components/AboutBar'
+import { Avatar } from './components/Avatar'
 import { Backdrop } from './components/Backdrop'
 import { Builder } from './components/Builder'
 import { Dock } from './components/Dock'
@@ -25,9 +28,9 @@ import { Entry } from './components/Entry'
 import { GuessCheck } from './components/GuessCheck'
 import { Guide } from './components/Guide'
 import { GuideBubble } from './components/GuideBubble'
-import { GuidePanel, type LogEntry } from './components/GuidePanel'
+import { GuidePanel, WeekButton, type LogEntry } from './components/GuidePanel'
 import { ItemSheet } from './components/ItemSheet'
-import { Journey } from './components/Journey'
+import { Journey, RouteSummary } from './components/Journey'
 import { LessonPreview } from './components/LessonPreview'
 import { Library } from './components/Library'
 import { Path } from './components/Path'
@@ -66,7 +69,7 @@ const swapIn = (subs: Record<string, string>, shown: string, next: string) => {
 }
 
 // What each walk-through step is about stays explorable; taps anywhere else nudge the buttons.
-const TOUR_SUBJECT = ['.route', '.path-wrap', '.gpanel', '.path__ask']
+const TOUR_SUBJECT = ['.route, .vroute', '.path-wrap', '.gpanel', '.path__ask']
 
 
 export default function App() {
@@ -111,7 +114,7 @@ export default function App() {
   const [unseen, setUnseen] = useState(0) // lessons added from the library, cleared once you look at your path
   const [tour, setTour] = useState<number | null>(null) // the walk-through after the plan is built
   const [nudge, setNudge] = useState(0)
-  const [mtab, setMtab] = useState<'path' | 'week' | 'you'>('path') // on a phone the plan is three tabs
+  const [youOpen, setYouOpen] = useState(false) // phone: How I see you, as a sheet opened from your photo
   const [focus, setFocus] = useState(0)
   const [sheet, setSheet] = useState<Item | null>(null)
   const [preview, setPreview] = useState<Lesson | null>(null)
@@ -134,14 +137,14 @@ export default function App() {
   const { goal, level, context } = profile
   const workKey = workOf(profile)
   const ranked = useMemo(() => rank(level ? workKey : null, goal ?? null, muted), [level, workKey, goal, muted])
-  const stops = useMemo(() => (goal && level ? buildPath(ranked, added, done, muted) : []), [goal, level, ranked, added, done, muted])
+  const perDay = sittings.reduce((a, x) => a + x.min, 0)
+  const stops = useMemo(() => (goal && level ? buildPath(ranked, added, done, muted, pathLength(perDay)) : []), [goal, level, ranked, added, done, muted, perDay])
   const chosen = useMemo(() => stops.map((s) => s.lesson.id), [stops])
   // swaps applied, each lesson shown in the format that suits you
   const path = useMemo(() => stops.map((s) => (subs[s.lesson.id] ? { lesson: lessonById[subs[s.lesson.id]] } : s)), [stops, subs])
   const plan = useMemo(() => (goal ? milestones(path, goal, workKey) : []), [path, goal, workKey])
   const layout = layoutFor(goal)
   const items = useMemo(() => fill(itemsOf(path, layout, pref, formats), sittings), [path, layout, pref, formats, sittings])
-  const perDay = sittings.reduce((a, x) => a + x.min, 0)
   const est = estimate(goal ?? 'understand', level ?? 'new', perDay)
   const nowItems = items.filter((it) => it.slot === 0)
   const nowMin = nowItems.reduce((a, it) => a + it.m.min, 0)
@@ -180,8 +183,8 @@ export default function App() {
   const showTour = (n: number | null) => {
     setTour(n)
     if (n === null) setNudge(0)
-    // on a phone, each step opens the tab it's talking about
-    else setMtab(n === 2 ? 'you' : 'path')
+    // on a phone, the step about how the guide sees you opens that sheet
+    setYouOpen(narrow && n === 2)
   }
 
   // ----- your answers -----
@@ -250,7 +253,7 @@ export default function App() {
     setBusy(target); setThinking(true)
     // what it heard first, then each stage ticking off, before anything moves
     setRework({ cause, stage: 0 })
-    if (narrow && tour === null) setMtab('path')
+    if (narrow && tour === null) setYouOpen(false)
     timers.later(() => setRework((r) => r && { ...r, stage: 1 }), REWORK_STEP_MS)
     timers.later(() => setRework((r) => r && { ...r, stage: 2 }), REWORK_STEP_MS * 2)
     timers.later(() => {
@@ -353,14 +356,17 @@ export default function App() {
     }, l.id, said, sg === 'easy' ? `Harder, since ${lowerKeepAI(topic)} came easy` : `Gentler, since ${lowerKeepAI(topic)} was hard to follow`)
   }
   // "I know this step already": every topic in the step is known, so the step goes and the next moves up
+  // Steps run in order: finished and known lessons leave the path, so the first step is always the
+  // current one and the rest are previews. Skipping always means the current step.
   const skipStep = () => {
-    const its = stepsOf(plan, items)[step] ?? []
+    const its = stepsOf(plan, items)[0] ?? []
     const topics = [...new Set(its.map((it) => it.stop.lesson.topic))]
     if (!topics.length) return
     act(`Got it, you know this. Skipped ${its.length} pieces and moved the next step up.`, () => {
       setMuted((m) => [...m, ...topics])
       learn(topics, 'knows', 'Skipped')
-    }, null, 'You said you know this step', 'Moved up: you already know the last step')
+      setFocus(0)
+    }, null, 'You said you know step 1', 'Moved up: you already know the last step')
   }
   const forget = (id: number) => {
     const x = learned.find((y) => y.id === id)
@@ -371,17 +377,33 @@ export default function App() {
   }
 
   // ----- what the guide shows back -----
+  // with the sidebar open on a laptop, the route folds into its goal card instead of taking a row
+  const sideRoute = !narrow && phase === 'ready'
   const known = goal && level ? { goal, level } : null
   const seen: Seen | null = known && { ...known, context, work: profile.work, workKey, guessed, pref, layout, sittings, minutesSource }
   // Changing your time goes through the guide too, so you see what it does: what fits now, and when you'd finish.
   const retime = (id: string, m: number) => {
     const next = sittings.map((x) => (x.id === id ? { ...x, min: m } : x))
-    const weeks = estimate(goal ?? 'understand', level ?? 'new', next.reduce((a, x) => a + x.min, 0)).weeks
-    const fits = fill(itemsOf(path, layout, pref, formats), next).filter((it) => it.slot === next.findIndex((x) => x.id === id)).length
+    const nextPerDay = next.reduce((a, x) => a + x.min, 0)
+    const weeks = estimate(goal ?? 'understand', level ?? 'new', nextPerDay).weeks
+    const grow = pathLength(nextPerDay) - pathLength(perDay)
+    const sized = grow > 0 ? `Added ${plural(grow, 'lesson')} to your path. ` : grow < 0 ? `Moved ${plural(-grow, 'lesson')} to later. ` : ''
+    const slot = next.findIndex((x) => x.id === id)
+    const was = items.filter((it) => it.slot === slot)
+    const now = fill(itemsOf(path, layout, pref, formats), next).filter((it) => it.slot === slot)
+    // what this sitting gains or gives up, named by the pieces themselves
+    const gained = now.filter((it) => !was.some((w) => w.m.key === it.m.key))
+    const lost = was.filter((it) => !now.some((n) => n.m.key === it.m.key))
+    const more = (list: Item[]) => (list.length > 1 ? `, and ${list.length - 1} more` : '')
+    const gain = gained.length ? `With ${m} min you'll also get to “${gained[0].m.title}”${more(gained)}. `
+      : lost.length ? `“${lost[0].m.title}”${more(lost)} moves to later. ` : ''
     const when = id === 'now' ? 'right now' : next.find((x) => x.id === id)?.when.toLowerCase() ?? ''
     const finish = weeks === est.weeks ? `Still about ${plural(weeks, 'week')} to your goal.` : `You'd finish in about ${plural(weeks, 'week')} instead of ${est.weeks}.`
-    act(`${plural(fits, 'piece')} fit in ${m} min. ${finish}`, () => { setSittings(next); setMinutesSource('you') }, null, `You have ${m} min ${when}`)
+    act(`${gain}${sized}${finish}`, () => { setSittings(next); setMinutesSource('you') }, null, `You have ${m} min ${when}`)
   }
+  // what the sitting teaches, from the pieces that teach (quizzes and templates check or support it)
+  const sittingBrief = briefOf(nowItems.filter((it) => it.m.kind !== 'quiz' && it.m.kind !== 'template').map((it) => it.stop.lesson.id))
+  const todayLine = nowItems.length ? `Today ${lowerFirst(sittingBrief)}` : null
   const pace = (m: number) => retime('now', m)
   const changes: Changes = { change, setWork, pickWork, week, unguess, pace }
   const suggestions = seen ? suggestionsFor(seen, changes) : []
@@ -394,7 +416,7 @@ export default function App() {
 
   // ----- the walk-through and the guide's headline -----
   const tourHeads = known
-    ? tourSteps({ ...known, legal: context === 'regulated', layout, steps: plan.length, weeks: est.weeks, perDay, levelGuessed: !!guessed.level })
+    ? tourSteps({ ...known, legal: context === 'regulated', layout, steps: plan.length, weeks: est.weeks, perDay, levelGuessed: !!guessed.level, sideRoute })
     : []
   useEffect(() => {
     if (tour === null) return
@@ -440,6 +462,7 @@ export default function App() {
   const sidebar = (inDrawer: boolean) => (
     <Sidebar
       tab={tab} first={first} theme={theme} badge={unseen} libraryLocked={libraryLocked}
+      route={sideRoute && !inDrawer ? <RouteSummary compact={collapsed || mid} legal={context === 'regulated'} plan={plan} items={items} focus={step} onFocus={(i) => { setFocus(i); openTab('path') }} /> : undefined}
       goal={phase === 'ready' && goal ? { label: GOAL_LABEL[goal], weeks: est.weeks, next: nowItems[0] && { title: nowItems[0].m.title, min: nowItems[0].m.min } } : null}
       onNext={() => { if (nowItems[0]) { openTab('path'); setSheet(nowItems[0]); setDrawer(false) } }}
       collapsed={!inDrawer && (collapsed || mid)}
@@ -462,21 +485,21 @@ export default function App() {
     />
   )
 
+  const panel = (
+    <GuidePanel
+      today={todayLine}
+      est={est} sittings={sittings} thinking={thinking} learned={learned} onForget={forget} changes={log}
+      persona={{ name: first, rows: personaRows }} onShow={narrow ? () => setYouOpen(false) : undefined}
+    />
+  )
+
   const ready = (
     <>
-      <Journey
-        from={level ? LEVEL_SHORT[level] : ''} to={goal ? GOAL_SHORT[goal] : ''} legal={context === 'regulated'}
-        plan={plan} items={items} done={done.length} focus={step} onFocus={setFocus}
-      />
-      {narrow && (
-        <div className="mtabs" role="tablist" aria-label="Your plan">
-          {([['path', 'Path'], ['week', 'Week'], ['you', 'About you']] as const).map(([k, label]) => (
-            <button key={k} role="tab" aria-selected={mtab === k} className={`mtabs__tab ${mtab === k ? 'is-on' : ''}`} onClick={() => setMtab(k)} disabled={tour !== null}>
-              {mtab === k && <motion.span layoutId="mtab-pill" className="mtabs__pill" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
+      {!narrow && !sideRoute && (
+        <Journey
+          from={level ? LEVEL_SHORT[level] : ''} to={goal ? GOAL_SHORT[goal] : ''} legal={context === 'regulated'}
+          plan={plan} items={items} done={done.length} focus={step} onFocus={setFocus}
+        />
       )}
       <div className="ready__body">
         <div className="path-wrap" data-rework={rework ? '' : undefined}>
@@ -487,16 +510,14 @@ export default function App() {
             ask={(
               <GuideBubble
                 step={plan[step]?.title ?? ''} thinking={thinking} reply={reply} last={log[0] ?? null} suggestions={suggestions}
-                onSkipStep={skipStep} onText={askText} onOpen={() => showTour(null)}
+                onSkipStep={skipStep} skipLabel={step === 0 ? 'I know this step already' : 'I know step 1 already'} onText={askText} onOpen={() => showTour(null)}
               />
             )}
             onOpen={(it) => (tour !== null ? setNudge((n) => n + 1) : setSheet(it))} onAsk={ask} onSignal={signal}
+            onLocked={() => notify('Opens after step 1', 'finish it first, or tell me you know it', 'I know step 1', skipStep)}
           />
         </div>
-        <GuidePanel
-          est={est} sittings={sittings} thinking={thinking} learned={learned} onForget={forget} changes={log}
-          persona={{ name: first, rows: personaRows }} onShow={narrow ? () => setMtab('path') : undefined}
-        />
+        {!narrow && panel}
       </div>
     </>
   )
@@ -514,7 +535,10 @@ export default function App() {
                 {unseen > 0 && <motion.i className="top__dot" initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 500, damping: 16 }} />}
               </button>
             )}
-            <h2 className="top__title">{tab === 'path' ? 'Your path' : 'Library'}</h2>
+            {!(narrow && phase === 'ready' && tab === 'path') && <h2 className="top__title">{tab === 'path' ? 'Your path' : 'Library'}</h2>}
+            {narrow && phase === 'ready' && tab === 'path' && <button className="top__me" onClick={() => setYouOpen(true)} aria-label="How I see you" aria-expanded={youOpen}><Avatar name={first} /></button>}
+            {narrow && phase === 'ready' && tab === 'path' && <WeekButton today={todayLine} est={est} sittings={sittings} />}
+            {narrow && phase === 'ready' && tab === 'path' && <RouteSummary pill legal={context === 'regulated'} plan={plan} items={items} focus={step} onFocus={(i) => { setFocus(i); setYouOpen(false) }} />}
             {!narrow && <AboutBar facts={facts} onFix={fix} onEdit={() => { setPhase('explore'); openTab('path') }} />}
           </header>
 
@@ -536,7 +560,7 @@ export default function App() {
                       {builder}
                     </motion.div>
                   ) : (
-                    <motion.div key="plan" className="ready" data-tour={tour ?? undefined} data-mtab={narrow ? mtab : undefined} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.1, duration: 0.35 } }}>
+                    <motion.div key="plan" className="ready" data-tour={tour ?? undefined} data-mtab={narrow ? 'path' : undefined} initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { delay: 0.1, duration: 0.35 } }}>
                       {ready}
                     </motion.div>
                   )}
@@ -579,10 +603,24 @@ export default function App() {
         </AnimatePresence>
 
         <AnimatePresence>
-          {session && <Session items={nowItems} offline={offline} onOffline={saveOffline} onClose={() => setSession(false)} />}
+          {session && <Session items={nowItems} brief={sittingBrief} offline={offline} onOffline={saveOffline} onClose={() => setSession(false)} />}
         </AnimatePresence>
 
-        {flights.map((d) => (
+        {narrow && createPortal(
+        <AnimatePresence>
+          {youOpen && phase === 'ready' && (
+            <>
+              <motion.div key="scrim" className="you-scrim" onClick={() => setYouOpen(false)} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} />
+              <motion.div key="sheet" className="you-sheet" role="dialog" aria-label="How I see you" initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: 'spring', stiffness: 320, damping: 34 }}>
+                <span className="you-sheet__grip" aria-hidden />
+                {panel}
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+      {flights.map((d) => (
           <motion.span
             key={d.id}
             className="flight flight--dot"

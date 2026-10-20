@@ -10,7 +10,7 @@ export const GOAL_TO: Record<GoalKey, string> = { understand: 'understanding mar
 
 // The path's title names where it ends up, not what you picked.
 export const destination = (goal: GoalKey, regulated: boolean): string => ({
-  understand: 'From the big picture to a plan of your own',
+  understand: 'From the basics to a marketing plan of your own',
   ai: regulated ? 'From first prompts to AI campaigns that pass review' : 'From first prompts to AI-run campaigns',
   better: 'From better questions to tests you can trust',
 })[goal]
@@ -104,7 +104,7 @@ export const LAYOUT_STYLE: Record<Layout, string> = { practice: 'By doing', tool
 export interface Head { status: string; title: string; meta?: string }
 
 // The walk-through after the plan is built, one line per step.
-export function tourSteps(t: { goal: GoalKey; legal: boolean; layout: Layout; steps: number; weeks: number; perDay: number; levelGuessed: boolean }): Head[] {
+export function tourSteps(t: { goal: GoalKey; legal: boolean; layout: Layout; steps: number; weeks: number; perDay: number; levelGuessed: boolean; sideRoute: boolean }): Head[] {
   const legal = t.legal ? ' I added a step on legal sign-off, since your work goes through approval.' : ''
   const second: Record<Layout, Omit<Head, 'status'>> = {
     practice: { title: 'Practice comes first', meta: `You want to use AI at work, so each step starts with something to try.${legal}` },
@@ -115,7 +115,7 @@ export function tourSteps(t: { goal: GoalKey; legal: boolean; layout: Layout; st
     story: { title: 'One step at a time', meta: 'Each piece builds on the one before, so it all fits together as you go.' },
   }
   return [
-    { status: 'Your path · 1 of 4', title: 'Here’s your route', meta: `${t.steps} steps to ${GOAL_TO[t.goal]}, about ${t.weeks} weeks at ${t.perDay} min a day. Tap a step on the route to see it.` },
+    { status: 'Your path · 1 of 4', title: 'Here’s your route', meta: `${t.steps} steps to ${GOAL_TO[t.goal]}, about ${t.weeks} weeks at ${t.perDay} min a day. You start with step 1 and the rest open after it.${t.sideRoute ? ' Your steps are in the sidebar on the left.' : ' Tap Step 1 of 3 at the top to look ahead.'}` },
     { status: 'Your path · 2 of 4', ...second[t.layout] },
     { status: 'Your path · 3 of 4', title: 'This is how I see you', meta: 'All of it is yours to change. Tap any line to fix it, now or whenever you come back.' },
     { status: 'Your path · 4 of 4', title: 'Change anything, any time', meta: 'Ask about a step, or tell me how a piece went. I’ll rework the plan and show you what moved.' },

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Bookmark, ChartColumn, LibraryBig, Lock, Moon, PanelLeftClose, PanelLeftOpen, Play, RotateCcw, Route, Sun, Target, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Avatar } from './Avatar'
@@ -7,6 +8,7 @@ type Tab = 'path' | 'library'
 interface SideGoal { label: string; weeks: number; next?: { title: string; min: number } }
 
 interface Props {
+  route?: ReactNode // the route, folded, when there's room for it here
   tab: Tab
   first: string
   theme: 'light' | 'dark'
@@ -32,7 +34,7 @@ const NAV: { id: Tab | 'progress' | 'saved'; label: string; icon: LucideIcon; li
   { id: 'saved', label: 'Saved', icon: Bookmark, live: false },
 ]
 
-export function Sidebar({ tab, first, theme, collapsed, goal, onCollapse, onTheme, onTab, onReset, onNext, badge = 0, libraryLocked = false }: Props) {
+export function Sidebar({ route, tab, first, theme, collapsed, goal, onCollapse, onTheme, onTab, onReset, onNext, badge = 0, libraryLocked = false }: Props) {
   return (
     <div className={`sb ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sb__top">
@@ -91,6 +93,7 @@ export function Sidebar({ tab, first, theme, collapsed, goal, onCollapse, onThem
               <span className="sb__bar"><i style={{ width: `${100 / goal.weeks}%` }} /></span>
               <small>Week 1 of about {goal.weeks}</small>
             </span>
+            {route}
             {goal.next && (
               <button className="sb__next" onClick={onNext}>
                 <span className="sb__nextplay"><Play size={12} strokeWidth={2.4} fill="currentColor" /></span>
@@ -101,6 +104,7 @@ export function Sidebar({ tab, first, theme, collapsed, goal, onCollapse, onThem
         )}
       </AnimatePresence>
 
+      {collapsed && route}
       <span className="sb__spacer" />
 
       <div className="sb__foot">

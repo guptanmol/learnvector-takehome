@@ -10,8 +10,9 @@ import { MaterialTile } from './Builder'
 const PHOTO = new Set(['video', 'case'])
 
 // What "Start" plays: the pieces that fit the sitting you're in, as a sequence you can read at a glance.
-export function Session({ items, offline, onOffline, onClose }: {
+export function Session({ items, brief, offline, onOffline, onClose }: {
   items: Item[]
+  brief: string // what this sitting teaches, in one line
   offline: Offline
   onOffline: () => void
   onClose: () => void
@@ -23,8 +24,8 @@ export function Session({ items, offline, onOffline, onClose }: {
       <motion.div className="preview session" role="dialog" aria-label="Right now" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 16 }} transition={{ type: 'spring', stiffness: 280, damping: 28 }}>
         <header className="session__head">
           <div>
-            <p className="k">Right now</p>
-            <h2 className="session__title">{min} min · {plural(items.length, 'piece')}</h2>
+            <p className="k">Right now · {min} min · {plural(items.length, 'piece')}</p>
+            <h2 className="session__title">{brief}</h2>
           </div>
           <button className="session__close" onClick={onClose} aria-label="Close"><X size={16} strokeWidth={2} /></button>
         </header>

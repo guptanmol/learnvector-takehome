@@ -61,6 +61,16 @@ const LESSON_GAIN: Record<string, string> = {
   l15: 'Plan a month of posts in an afternoon',
   l16: 'Know which claims you can and can’t make',
 }
+// What a sitting teaches, in one sentence, from the lessons that fit in it: more time, more of it.
+export function briefOf(lessons: string[]): string {
+  const gains = [...new Set(lessons)].map((id) => LESSON_GAIN[id]).filter((g): g is string => !!g).map(lowerFirst)
+  if (!gains.length) return 'A short sitting on your path.'
+  if (gains.length === 1) return `You’ll ${gains[0]}.`
+  if (gains.length === 2) return `You’ll ${gains[0]} and ${gains[1]}.`
+  const rest = gains.length - 2
+  return `You’ll ${gains[0]}, ${gains[1]}, and start on ${rest} more ${rest === 1 ? 'lesson' : 'lessons'}.`
+}
+
 export function gainOf(m: Material, lessonTitle?: string): string {
   if (m.kind === 'video') return LESSON_GAIN[m.lesson] ?? (lessonTitle ?? '')
   if (m.kind === 'quiz') return 'Check you’ve really got it'

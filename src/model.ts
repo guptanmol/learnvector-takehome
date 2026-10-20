@@ -62,7 +62,8 @@ export function readWords(text: string): { work: WorkKey | null; goal: GoalKey |
 
 export interface Stop { lesson: Lesson }
 
-const PATH_LENGTH = 7
+// How many lessons the plan holds: more time a day, more of the path laid out now.
+export const pathLength = (perDay: number) => Math.min(14, Math.max(5, Math.round(perDay / 3)))
 
 // Lessons scored against who they're written for, your goal and topics you already know.
 export function rank(work: WorkKey | null, goal: GoalKey | null, muted: string[]): Lesson[] {
@@ -84,7 +85,7 @@ export function rank(work: WorkKey | null, goal: GoalKey | null, muted: string[]
 }
 
 // What you added from the library first, then the best-ranked lessons, basics to applied.
-export function buildPath(ranked: Lesson[], added: string[], removed: string[], muted: string[]): Stop[] {
+export function buildPath(ranked: Lesson[], added: string[], removed: string[], muted: string[], length: number): Stop[] {
   const out: Stop[] = []
   added.forEach((id) => {
     if (!out.some((o) => o.lesson.id === id) && !removed.includes(id)) out.push({ lesson: lessonById[id] })
@@ -92,7 +93,7 @@ export function buildPath(ranked: Lesson[], added: string[], removed: string[], 
   const taken = new Set(out.map((o) => o.lesson.id))
   ranked
     .filter((l) => !taken.has(l.id) && !removed.includes(l.id) && !muted.includes(l.topic))
-    .slice(0, Math.max(0, PATH_LENGTH - out.length))
+    .slice(0, Math.max(0, length - out.length))
     .sort((a, b) => a.level - b.level)
     .forEach((l) => out.push({ lesson: l }))
   return out
@@ -102,23 +103,24 @@ export function buildPath(ranked: Lesson[], added: string[], removed: string[], 
 
 export interface Milestone { title: string; why: string; stops: Stop[] }
 
+// Each step is named for what you'll learn in it, in plain words, with what you'll be able to do after.
 const ROUTES: Record<GoalKey, (w: WorkKey) => [string, string][]> = {
   understand: () => [
-    ['See the whole picture', 'You’ll know how the parts of marketing fit together.'],
-    ['Learn the core moves', 'You’ll use the ideas marketers rely on every week.'],
-    ['Try it on something real', 'You’ll have used it on a product you know.'],
+    ['What marketing is and how it works', 'You’ll see how getting noticed, winning trust and making a sale connect.'],
+    ['Who buys, and why they say yes', 'You’ll describe who a product is for and what makes them choose it.'],
+    ['Market a product you know', 'You’ll write a one-page plan for something real.'],
   ],
   ai: (w) => [
-    ['Get good at prompting', 'You’ll get a usable first draft from AI every time.'],
-    ['Use AI in your campaigns', 'AI will handle your research, variants and planning.'],
+    ['Write prompts that get usable drafts', 'You’ll get a first draft from AI you can actually edit.'],
+    ['Use AI across a campaign', 'AI will take the research, variants and planning off your plate.'],
     w === 'regulated'
-      ? ['Get it approved', 'Your AI copy will get through legal review.']
-      : ['Make it trustworthy', 'You’ll check AI output before anyone else sees it.'],
+      ? ['Get AI copy through review', 'You’ll know what legal will flag before you send it.']
+      : ['Check AI work before it ships', 'You’ll catch what AI gets wrong before anyone else sees it.'],
   ],
   better: () => [
-    ['Sharpen your research', 'You’ll ask customers questions that get honest answers.'],
-    ['Read your numbers', 'You’ll spot where people drop off, and why.'],
-    ['Run better tests', 'You’ll tell a real win from luck.'],
+    ['Ask customers better questions', 'You’ll get honest answers instead of polite ones.'],
+    ['Find where people drop off', 'You’ll spot the step that loses people, and why.'],
+    ['Run tests you can trust', 'You’ll tell a real win from luck.'],
   ],
 }
 

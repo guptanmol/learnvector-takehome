@@ -11,12 +11,13 @@ The page a learner sees right after Google sign-in. It asks one question, builds
 3. **Everything else starts as an assumption, and says so.** Experience comes from your answer. Minutes come from your device (10 on a phone, 20 on a laptop). If your work email belongs to a bank, it adds a step on getting copy through review, and says why. Each assumption is marked "Assumed" until you confirm it.
 4. **At most one question, once the path is on screen.** If it doesn't know your work, it asks what a normal week looks like and reads your experience from the answer. It never asks you to fill in its settings. The card waits ten seconds, then leaves on its own, and the assumption stays marked.
 5. **It keeps learning.** Every piece has an Ask button: easier, harder, shorter, another format, or "I already know this". Saying a piece was too easy or hard to follow changes the later pieces on that topic.
-6. **It shows its work.** Before anything moves, the guide shows what it heard and rebuilds the step in stages. Changing your minutes works the same way: it tells you what fits now and when you'd finish. New pieces fade in with a note saying why they're there. Every change is listed under Recent changes with Undo.
-7. **You can change anything.** How I see you lists goal, experience, work, approvals, how you learn best and pace. Tap any line to change it.
+6. **It shows its work.** Before anything moves, the guide shows what it heard and rebuilds the step in stages. Changing your minutes works the same way: the path grows or shrinks, and the guide tells you what fits now and when you'd finish. New pieces fade in with a note saying why they're there. Every change is listed under Recent changes with Undo.
+7. **Steps open in order.** You start on step 1. Later steps are previews you can look at, and if you already know step 1 you can skip it.
+8. **You can change anything.** How I see you lists goal, experience, work, approvals, how you learn best and pace. Tap any line to change it.
 
 The same rules give the two personas different pages:
 
-- **Priya** is on her phone at lunch. She gets 10 minutes, tabs instead of a long scroll, and sheets near her thumb. The guide asks what her week looks like. "Building the product" brings lessons written for people who build apps, from the basics up.
+- **Priya** is on her phone at lunch. She gets 10 minutes, one step on screen at a time, and sheets near her thumb. Her steps, her week and How I see you sit behind small buttons in the header. The guide asks what her week looks like. "Building the product" brings lessons written for people who build apps, from the basics up.
 - **Cathy** is on a laptop on the train. Her bank email adds a step on getting AI copy through review, with a note saying why, which she can keep or remove. Wanting AI at work puts practice first, and she can save today's pieces for when the signal drops.
 
 ## What's mocked, and what isn't here

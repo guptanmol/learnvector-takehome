@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Check, ChevronDown, History, Minus, Plus, Undo2, X } from 'lucide-react'
+import { ArrowRight, CalendarDays, Check, ChevronDown, History, Minus, Plus, Undo2, X } from 'lucide-react'
 import { ThinkingOrb } from 'thinking-orbs'
 import type { FactKey } from '../colors'
 import { FACT_ICON, LEARNED_ICON } from '../icons'
 import { LEARNED_TEXT, type Estimate, type Learned, type Sitting } from '../plan'
+import { useDismiss } from '../hooks'
 import { Avatar } from './Avatar'
 
 // every line of how the guide sees you can be changed in place
@@ -18,6 +20,7 @@ export interface PersonaRow {
 export interface LogEntry { id: number; text: string; cause: string; undo: () => void; added: string[]; removed: string[] }
 
 interface Props {
+  today: string | null // what today's sitting gets you
   est: Estimate
   sittings: Sitting[]
   thinking: boolean
@@ -32,34 +35,12 @@ interface Props {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // The right side of your path: your week as it stands, and the guide you shape it with.
-export function GuidePanel({ est, sittings, thinking, learned, onForget, changes, persona, onShow }: Props) {
+export function GuidePanel({ today, est, sittings, thinking, learned, onForget, changes, persona, onShow }: Props) {
   const [editing, setEditing] = useState<FactKey | null>(null)
-  // the next seven days, starting today: weekdays at your pace, weekends off
-  const start = new Date().getDay()
-  const days = Array.from({ length: 7 }, (_, i) => (start + i) % 7)
-  const perDay = sittings.reduce((a, s) => a + s.min, 0)
-  const max = Math.max(perDay, 60)
 
   return (
     <aside className="gpanel" aria-label="Your week and your guide">
-      <section className="wk">
-        <div className="wk__head">
-          <span className="k">Week 1 of about {est.weeks}</span>
-          <span className="wk__sum"><b>{perDay}</b> min a day</span>
-        </div>
-        <div className="wk__days">
-          {days.map((d, i) => {
-            const rest = i > 0 && (d === 0 || d === 6)
-            const min = rest ? 0 : perDay
-            return (
-              <div key={i} className={`wday ${i === 0 ? 'is-today' : ''} ${rest ? 'is-rest' : ''}`} title={rest ? 'Off' : `${min} min`}>
-                <span className="wday__bar"><motion.i animate={{ height: `${(min / max) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 24 }} /></span>
-                <span className="wday__name">{i === 0 ? 'Today' : DAY_NAMES[d]}</span>
-              </div>
-            )
-          })}
-        </div>
-      </section>
+      <Week today={today} est={est} sittings={sittings} />
 
       <section className="shape">
         <div className="shape__head">
@@ -159,5 +140,66 @@ function Changes({ changes, onShow }: { changes: LogEntry[]; onShow?: () => void
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+// Your week as it stands: the next seven days at your pace, and what today's sitting gets you.
+export function Week({ today, est, sittings }: Pick<Props, 'today' | 'est' | 'sittings'>) {
+  // the next seven days, starting today: weekdays at your pace, weekends off
+  const start = new Date().getDay()
+  const days = Array.from({ length: 7 }, (_, i) => (start + i) % 7)
+  const perDay = sittings.reduce((a, s) => a + s.min, 0)
+  const max = Math.max(perDay, 60)
+  return (
+    <section className="wk">
+      <div className="wk__head">
+        <span className="k">Week 1 of about {est.weeks}</span>
+        <span className="wk__sum"><b>{perDay}</b> min a day</span>
+      </div>
+      <div className="wk__days">
+        {days.map((d, i) => {
+          const rest = i > 0 && (d === 0 || d === 6)
+          const min = rest ? 0 : perDay
+          return (
+            <div key={i} className={`wday ${i === 0 ? 'is-today' : ''} ${rest ? 'is-rest' : ''}`} title={rest ? 'Off' : `${min} min`}>
+              <span className="wday__bar"><motion.i animate={{ height: `${(min / max) * 100}%` }} transition={{ type: 'spring', stiffness: 200, damping: 24 }} /></span>
+              <span className="wday__name">{i === 0 ? 'Today' : DAY_NAMES[d]}</span>
+            </div>
+          )
+        })}
+      </div>
+      <AnimatePresence mode="wait" initial={false}>
+        {today && <motion.p key={today} className="wk__today" initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.3 }}>{today}</motion.p>}
+      </AnimatePresence>
+    </section>
+  )
+}
+
+// Phone: the week behind a calendar button in the header, opening as a panel under it.
+export function WeekButton(props: Pick<Props, 'today' | 'est' | 'sittings'>) {
+  const [at, setAt] = useState<{ top: number; right: number } | null>(null)
+  const btn = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setAt(null), [])
+  useDismiss(!!at, close, btn, panel)
+  const toggle = () => {
+    const r = btn.current?.getBoundingClientRect()
+    // the panel is wider than the space left of the button, so it hangs from the screen's right edge
+    setAt(at || !r ? null : { top: r.bottom + 8, right: 12 })
+  }
+  return (
+    <>
+      <button ref={btn} className="top__week" onClick={toggle} aria-expanded={!!at} aria-label="Your week"><CalendarDays size={18} strokeWidth={2} /></button>
+      {createPortal(
+        <AnimatePresence>
+          {at && (
+            <motion.div ref={panel} className="week-pop" style={{ top: at.top, right: at.right }} initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={{ duration: 0.18 }}>
+              <Week {...props} />
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   )
 }

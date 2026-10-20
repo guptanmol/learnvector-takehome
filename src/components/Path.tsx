@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, Clock3, RefreshCw } from 'lucide-react'
+import { ArrowRight, Clock3, Lock, RefreshCw } from 'lucide-react'
 import { ThinkingOrb } from 'thinking-orbs'
 import { gainOf } from '../materials'
 import type { Milestone } from '../model'
@@ -20,6 +20,7 @@ interface PathProps {
   fresh: Set<string> // pieces that just changed because of something the guide learned
   because: Record<string, string> // why the guide put a piece here, for pieces it swapped in
   onOpen: (it: Item) => void
+  onLocked: () => void // a piece in a later step was opened
   onAsk: (it: Item, a: Ask) => void
   onSignal: (it: Item, s: Signal) => void
   ask?: ReactNode // the guide, anchored to this step
@@ -29,6 +30,7 @@ interface PathProps {
 // follows how you learn.
 export function Path(p: PathProps) {
   const m = p.plan[p.focus]
+  const locked = p.focus > 0 // later steps are previews until step 1 is done
   const its = stepsOf(p.plan, p.items)[p.focus] ?? []
   // pieces that arrive while you're looking bloom in from grey; the rest are just there
   const key = `${p.layout}-${p.focus}`
@@ -36,7 +38,7 @@ export function Path(p: PathProps) {
   if (seen.current.k !== key) seen.current = { k: key, keys: new Set(its.map((it) => it.m.key)) }
   useEffect(() => { its.forEach((it) => seen.current.keys.add(it.m.key)) })
   const isNew = (it: Item) => !seen.current.keys.has(it.m.key)
-  const sub: Sub = { ...p, its, isNew }
+  const sub: Sub = { ...p, its, isNew, locked }
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.section
@@ -53,6 +55,7 @@ export function Path(p: PathProps) {
           <h3>{m?.title}</h3>
           <p className="path__goal">{m?.why}</p>
           <div className="path__chips">
+            {locked && <span className="pchip pchip--lock"><Lock size={12} strokeWidth={2.2} />Opens after step 1</span>}
             <span className="pchip"><Clock3 size={12} strokeWidth={2.2} />About {hours(p.stepMin[p.focus] ?? 0)}</span>
             {topicsOf(its).map((t) => <span key={t} className="pchip pchip--topic">{t}</span>)}
           </div>
@@ -66,13 +69,13 @@ export function Path(p: PathProps) {
 // The topics a step draws from, in path order.
 const topicsOf = (its: Item[]) => [...new Set(its.map((it) => it.stop.lesson.topic))]
 
-type Sub = PathProps & { its: Item[]; isNew: (it: Item) => boolean }
+type Sub = PathProps & { its: Item[]; isNew: (it: Item) => boolean; locked: boolean }
 
 // A working marketer: the tools for this problem; the guide suggests where to start.
 function Toolkit({ its, ...p }: Sub) {
   return (
     <section className="group group--flat">
-      <div className="toolkit">
+      <div className={`toolkit ${its.length > 3 ? 'is-many' : ''}`}>
         <AnimatePresence mode="popLayout" initial={false}>
           {its.map((it, i) => (
             <Beat key={it.m.key} it={it} as="div" role={i === 0 ? <><b className="beat__n is-start">★</b>Start here</> : roleOf(it, i)} {...p} />
@@ -100,7 +103,7 @@ function Beat({ it, as, role, arrow, ...p }: Omit<Sub, 'its'> & { it: Item; as: 
       <span className="beat__role">{role}</span>
       <div className="beat__card">
         <Piece it={it} bloom={p.isNew(it)} {...p} />
-        <CardAsk it={it} onAsk={p.onAsk} onSignal={p.onSignal} />
+        {!p.locked && <CardAsk it={it} onAsk={p.onAsk} onSignal={p.onSignal} />}
       </div>
     </Tag>
   )
@@ -120,7 +123,7 @@ function roleOf(it: Item, i: number): string {
 function Sequence({ its, ...p }: Sub) {
   return (
     <section className="group group--flat">
-      <ol className={`story ${p.layout === 'practice' ? 'story--wide' : ''}`}>
+      <ol className={`story ${p.layout === 'practice' ? 'story--wide' : ''} ${its.length > 3 ? 'is-many' : ''}`}>
         <AnimatePresence mode="popLayout" initial={false}>
           {its.map((it, j) => (
             <Beat key={it.m.key} it={it} as="li" arrow={j > 0} role={<><b className="beat__n">{j + 1}</b>{roleOf(it, j)}</>} {...p} />
@@ -132,7 +135,7 @@ function Sequence({ its, ...p }: Sub) {
 }
 
 // One piece of your path: what it is, and whether it's in this sitting. Tap for everything else.
-function Piece({ it, bloom, sittings, busy, fresh, because, onOpen }: { it: Item; bloom: boolean } & PathProps) {
+function Piece({ it, bloom, sittings, busy, fresh, because, onOpen, onLocked, locked }: { it: Item; bloom: boolean; locked: boolean } & PathProps) {
   const working = busy === it.stop.lesson.id
   // a new arrival starts grey and the colour spreads in
   const [wet, setWet] = useState(!bloom)
@@ -142,7 +145,7 @@ function Piece({ it, bloom, sittings, busy, fresh, because, onOpen }: { it: Item
     return () => clearTimeout(t)
   }, [wet])
   return (
-    <button data-lesson={it.stop.lesson.id} className="piece" onClick={() => onOpen(it)} aria-label={`${it.m.title}. Open`}>
+    <button data-lesson={it.stop.lesson.id} className={`piece ${locked ? 'is-locked' : ''}`} onClick={() => (locked ? onLocked() : onOpen(it))} aria-label={locked ? `${it.m.title}. Opens after step 1` : `${it.m.title}. Open`}>
       <span className="piece__media">
         <AnimatePresence initial={false}>
           <motion.span key={it.m.key} className="piece__swap" initial={{ opacity: 0, scale: 1.05, filter: 'blur(10px)' }} animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, filter: 'blur(6px)' }} transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}>
@@ -154,7 +157,8 @@ function Piece({ it, bloom, sittings, busy, fresh, because, onOpen }: { it: Item
             <motion.span className="piece__fresh" initial={{ opacity: 0, y: -6, scale: 0.8 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 420, damping: 18, delay: 0.6 }}>New</motion.span>
           )}
         </AnimatePresence>
-        {it.slot != null && <span className={`piece__when ${it.slot === 0 ? 'is-now' : ''}`}>{sittings[it.slot]}</span>}
+        {locked ? <span className="piece__when is-locked"><Lock size={11} strokeWidth={2.4} />After step 1</span>
+          : it.slot != null && <span className={`piece__when ${it.slot === 0 ? 'is-now' : ''}`}>{sittings[it.slot]}</span>}
         {because[it.stop.lesson.id] && <span className="piece__because" title={because[it.stop.lesson.id]}><RefreshCw size={11} strokeWidth={2.4} />{because[it.stop.lesson.id]}</span>}
         <AnimatePresence>
           {working && (

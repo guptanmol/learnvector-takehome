@@ -17,12 +17,13 @@ interface Props {
   last: LogEntry | null
   suggestions: Suggestion[]
   onSkipStep: () => void
+  skipLabel: string
   onText: (t: string) => void
   onOpen?: () => void
 }
 
 // The guide lives on the section it changes: open it from the step, ask, and watch that step change.
-export function GuideBubble({ step, thinking, reply, last, suggestions, onSkipStep, onText, onOpen }: Props) {
+export function GuideBubble({ step, thinking, reply, last, suggestions, onSkipStep, skipLabel, onText, onOpen }: Props) {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const box = useRef<HTMLDivElement>(null)
@@ -64,7 +65,7 @@ export function GuideBubble({ step, thinking, reply, last, suggestions, onSkipSt
                 <p className="gbub__reply">{thinking ? 'Reworking this…' : reply}{undo}</p>
               )}
               <div className="gbub__chips">
-                <button className="schip" onClick={() => { close(); onSkipStep() }} disabled={thinking}><FACT_ICON.level size={13} strokeWidth={2.2} />I know this step already</button>
+                <button className="schip" onClick={() => { close(); onSkipStep() }} disabled={thinking}><FACT_ICON.level size={13} strokeWidth={2.2} />{skipLabel}</button>
                 {suggestions.map((s) => {
                   const I = FACT_ICON[s.fact]
                   return <button key={s.id} className="schip" onClick={() => { close(); s.run() }} disabled={thinking}><I size={13} strokeWidth={2.2} />{s.text}</button>
