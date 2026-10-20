@@ -1267,3 +1267,19 @@ body:has(.guide--tour) .you-sheet { bottom: 250px; max-height: calc(100dvh - 330
 .piece__because { height: auto; min-height: 24px; padding: 4px 9px; overflow: visible; line-height: 1.3; white-space: normal; text-overflow: clip; }
 /* Right now: what the sitting gets you, and titles that wrap */
 .session__t b { overflow: visible; white-space: normal; text-overflow: clip; line-height: 1.3; }
+
+/* the profile doubles as a demo-only persona switcher */
+.sb__me { padding: 4px 6px 4px 4px; margin: -4px 0 -4px -4px; border-radius: 14px; text-align: left; color: inherit; }
+.sb__me:hover, .sb__me.is-open { background: var(--sunk); }
+.sb.is-collapsed .sb__me { margin: 0; padding: 3px; }
+.sb__swap { flex: none; margin-left: auto; color: var(--faint); }
+.who-pop { position: fixed; z-index: 90; display: grid; gap: 2px; width: 264px; padding: 6px; border-radius: 18px; background: var(--pop); backdrop-filter: var(--blur); -webkit-backdrop-filter: var(--blur); box-shadow: var(--rim), var(--sh-3); transform-origin: bottom left; }
+.who-pop__k { display: flex; align-items: center; gap: 6px; margin: 4px 8px 4px; color: var(--mut); font-size: 11.5px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; }
+.who-pop__row { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 7px 8px; border-radius: 12px; text-align: left; color: var(--ink); }
+.who-pop__row:hover { background: var(--sunk); }
+.who-pop__row.is-on { background: var(--sunk); }
+.who-pop__av { width: 30px; height: 30px; }
+.who-pop__t { display: grid; min-width: 0; line-height: 1.25; }
+.who-pop__t b { font-size: 13.5px; font-weight: 650; }
+.who-pop__t small { overflow: hidden; color: var(--faint); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.who-pop__note { margin: 4px 8px 4px; padding-top: 8px; border-top: 1px solid var(--track); color: var(--faint); font-size: 11.5px; line-height: 1.35; }

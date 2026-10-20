@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react'
-import { Bookmark, ChartColumn, LibraryBig, Lock, Moon, PanelLeftClose, PanelLeftOpen, Play, RotateCcw, Route, Sun, Target, type LucideIcon } from 'lucide-react'
+import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
+import { Bookmark, Check, ChevronsUpDown, Wrench, ChartColumn, LibraryBig, Lock, Moon, PanelLeftClose, PanelLeftOpen, Play, RotateCcw, Route, Sun, Target, type LucideIcon } from 'lucide-react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Avatar } from './Avatar'
+import { useDismiss } from '../hooks'
+import { PEOPLE, switchTo } from '../people'
 
 type Tab = 'path' | 'library'
 
@@ -11,6 +14,7 @@ interface Props {
   route?: ReactNode // the route, folded, when there's room for it here
   tab: Tab
   first: string
+  me: string // which mock account is signed in
   theme: 'light' | 'dark'
   collapsed: boolean
   goal: SideGoal | null
@@ -34,7 +38,7 @@ const NAV: { id: Tab | 'progress' | 'saved'; label: string; icon: LucideIcon; li
   { id: 'saved', label: 'Saved', icon: Bookmark, live: false },
 ]
 
-export function Sidebar({ route, tab, first, theme, collapsed, goal, onCollapse, onTheme, onTab, onReset, onNext, badge = 0, libraryLocked = false }: Props) {
+export function Sidebar({ route, tab, first, me, theme, collapsed, goal, onCollapse, onTheme, onTab, onReset, onNext, badge = 0, libraryLocked = false }: Props) {
   return (
     <div className={`sb ${collapsed ? 'is-collapsed' : ''}`}>
       <div className="sb__top">
@@ -108,10 +112,7 @@ export function Sidebar({ route, tab, first, theme, collapsed, goal, onCollapse,
       <span className="sb__spacer" />
 
       <div className="sb__foot">
-        <div className="sb__me">
-          <Avatar name={first} className="sb__avatar" title={`${first}, signed in with Google`} />
-          {!collapsed && <span className="sb__who"><b>{first}</b><small>Signed in with Google</small></span>}
-        </div>
+        <Me first={first} me={me} collapsed={collapsed} />
         <div className="sb__tools">
           <button className="sb__icon" onClick={onTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}>
             {theme === 'dark' ? <Sun size={17} strokeWidth={1.8} /> : <Moon size={17} strokeWidth={1.8} />}
@@ -120,5 +121,48 @@ export function Sidebar({ route, tab, first, theme, collapsed, goal, onCollapse,
         </div>
       </div>
     </div>
+  )
+}
+
+// You, and a demo-only switch between the mock accounts so a reviewer can see each persona's page.
+// Switching reloads, the same as signing in as someone else.
+function Me({ first, me, collapsed }: { first: string; me: string; collapsed: boolean }) {
+  const [at, setAt] = useState<{ left: number; bottom: number } | null>(null)
+  const btn = useRef<HTMLButtonElement>(null)
+  const panel = useRef<HTMLDivElement>(null)
+  const close = useCallback(() => setAt(null), [])
+  useDismiss(!!at, close, btn, panel)
+  const toggle = () => {
+    const r = btn.current?.getBoundingClientRect()
+    if (at || !r) return setAt(null)
+    // above the profile; beside it when the sidebar is collapsed
+    setAt(collapsed ? { left: r.right + 10, bottom: innerHeight - r.bottom } : { left: r.left, bottom: innerHeight - r.top + 8 })
+  }
+  return (
+    <>
+      <button ref={btn} className={`sb__me ${at ? 'is-open' : ''}`} onClick={toggle} aria-expanded={!!at} aria-haspopup="menu" title={`${first}, signed in with Google`}>
+        <Avatar name={first} className="sb__avatar" />
+        {!collapsed && <span className="sb__who"><b>{first}</b><small>Google account</small></span>}
+        {!collapsed && <ChevronsUpDown className="sb__swap" size={15} strokeWidth={2} />}
+      </button>
+      {createPortal(
+        <AnimatePresence>
+          {at && (
+            <motion.div ref={panel} className="who-pop" role="menu" style={{ left: at.left, bottom: at.bottom }} initial={{ opacity: 0, y: 4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 4, scale: 0.98 }} transition={{ duration: 0.16 }}>
+              <p className="who-pop__k"><Wrench size={12} strokeWidth={2.2} />Demo tool · switch persona</p>
+              {Object.entries(PEOPLE).map(([id, p]) => (
+                <button key={id} className={`who-pop__row ${id === me ? 'is-on' : ''}`} role="menuitemradio" aria-checked={id === me} onClick={() => (id === me ? close() : switchTo(id))}>
+                  <Avatar name={p.name} className="who-pop__av" />
+                  <span className="who-pop__t"><b>{p.name}</b><small>{p.email}</small></span>
+                  {id === me && <Check size={15} strokeWidth={2.4} />}
+                </button>
+              ))}
+              <p className="who-pop__note">Not part of the design. Switching starts that person over.</p>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body,
+      )}
+    </>
   )
 }

@@ -37,16 +37,12 @@ import { Path } from './components/Path'
 import { Rework } from './components/Rework'
 import { Session } from './components/Session'
 import { Sidebar } from './components/Sidebar'
+import { PEOPLE, meId } from './people'
 import { TOUR_STEPS, TourControls } from './components/Tour'
 
 // Google sign-in gives us a first name and an email. A work email we recognise is the only guess
 // it can make about you, and it's shown as one.
-const PEOPLE: Record<string, { name: string; email: string }> = {
-  priya: { name: 'Priya', email: 'priya@gmail.com' },
-  cathy: { name: 'Cathy', email: 'cathy@harborbank.com' },
-  sam: { name: 'Sam', email: 'sam@gmail.com' },
-}
-const me = PEOPLE[new URLSearchParams(location.search).get('u') ?? 'priya'] ?? PEOPLE.priya
+const me = PEOPLE[meId]
 const first = me.name
 const fromEmail = guessWork(me.email)
 
@@ -461,7 +457,7 @@ export default function App() {
 
   const sidebar = (inDrawer: boolean) => (
     <Sidebar
-      tab={tab} first={first} theme={theme} badge={unseen} libraryLocked={libraryLocked}
+      tab={tab} first={first} me={meId} theme={theme} badge={unseen} libraryLocked={libraryLocked}
       route={sideRoute && !inDrawer ? <RouteSummary compact={collapsed || mid} legal={context === 'regulated'} plan={plan} items={items} focus={step} onFocus={(i) => { setFocus(i); openTab('path') }} /> : undefined}
       goal={phase === 'ready' && goal ? { label: GOAL_LABEL[goal], weeks: est.weeks, next: nowItems[0] && { title: nowItems[0].m.title, min: nowItems[0].m.min } } : null}
       onNext={() => { if (nowItems[0]) { openTab('path'); setSheet(nowItems[0]); setDrawer(false) } }}
