@@ -399,7 +399,8 @@ export default function App() {
   }
   // what the sitting teaches, from the pieces that teach (quizzes and templates check or support it)
   const sittingBrief = briefOf(nowItems.filter((it) => it.m.kind !== 'quiz' && it.m.kind !== 'template').map((it) => it.stop.lesson.id))
-  const todayLine = nowItems.length ? `Today ${lowerFirst(sittingBrief)}` : null
+  const todayLine = !nowItems.length ? null
+    : sittingBrief.startsWith('By the end,') ? sittingBrief.replace('By the end,', 'By the end of today,') : `Today ${lowerFirst(sittingBrief)}`
   const pace = (m: number) => retime('now', m)
   const changes: Changes = { change, setWork, pickWork, week, unguess, pace }
   const suggestions = seen ? suggestionsFor(seen, changes) : []

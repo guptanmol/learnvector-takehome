@@ -61,14 +61,17 @@ const LESSON_GAIN: Record<string, string> = {
   l15: 'Plan a month of posts in an afternoon',
   l16: 'Know which claims you can and can’t make',
 }
-// What a sitting teaches, in one sentence, from the lessons that fit in it: more time, more of it.
-export function briefOf(lessons: string[]): string {
-  const gains = [...new Set(lessons)].map((id) => LESSON_GAIN[id]).filter((g): g is string => !!g).map(lowerFirst)
-  if (!gains.length) return 'A short sitting on your path.'
-  if (gains.length === 1) return `You’ll ${gains[0]}.`
-  if (gains.length === 2) return `You’ll ${gains[0]} and ${gains[1]}.`
-  const rest = gains.length - 2
-  return `You’ll ${gains[0]}, ${gains[1]}, and start on ${rest} more ${rest === 1 ? 'lesson' : 'lessons'}.`
+// What a sitting gets you to, in one sentence. One or two lessons are named; with more, it names
+// the furthest one, since that's where the time ends up.
+export function briefOf(ids: string[]): string {
+  const taught = [...new Set(ids)].filter((id) => LESSON_GAIN[id])
+  const gain = (id: string) => lowerFirst(LESSON_GAIN[id])
+  if (!taught.length) return 'A short sitting on your path.'
+  if (taught.length === 1) return `You’ll ${gain(taught[0])}.`
+  if (taught.length === 2) return `You’ll ${gain(taught[0])} and ${gain(taught[1])}.`
+  const level = (id: string) => lessons.find((l) => l.id === id)?.level ?? 0
+  const furthest = taught.reduce((a, b) => (level(b) >= level(a) ? b : a))
+  return `By the end, you’ll ${gain(furthest)}.`
 }
 
 export function gainOf(m: Material, lessonTitle?: string): string {
