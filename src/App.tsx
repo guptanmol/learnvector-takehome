@@ -4,8 +4,8 @@ import { Menu } from 'lucide-react'
 import { checksFor, factsFor, personaRowsFor, suggestionsFor, type Changes, type Seen } from './aboutYou'
 import { lessons, lessonById, minutesOf, type Lesson } from './data'
 import {
-  CONTEXT_SHORT, GOAL_SHORT, GOAL_TO, LEVEL_GUESS, LEVEL_SHORT, NO_ALTERNATIVE, SIGNAL_SAID, SWAP_CAUSE, SWAP_SAY,
-  REWORK_STEP_MS, WORK_SAY, sayChanges, tourSteps, type Head, type Offline,
+  GOAL_SHORT, LEVEL_GUESS, LEVEL_SHORT, NO_ALTERNATIVE, REASON, SIGNAL_SAID, SWAP_CAUSE, SWAP_SAY, SWAP_WHY,
+  REWORK_STEP_MS, WEEK, WORK_SAY, destination, sayChanges, tourSteps, type Head, type Offline,
 } from './guide'
 import { PHONE, ThemeContext, useMedia, useTimers } from './hooks'
 import {
@@ -16,7 +16,7 @@ import {
   FMT_NAME, LAYOUT_NAME, alternative, estimate, fill, itemsOf, layoutFor, nextFormat, readAsk, stepsOf,
   type Ask, type Change, type Fmt, type Item, type Learned, type Pref, type Signal, type Sitting,
 } from './plan'
-import { lowerFirst, plural } from './text'
+import { lowerFirst, lowerKeepAI, plural } from './text'
 import { AboutBar } from './components/AboutBar'
 import { Backdrop } from './components/Backdrop'
 import { Builder } from './components/Builder'
@@ -51,7 +51,7 @@ type Phase = 'explore' | 'building' | 'ready'
 type Tab = 'path' | 'library'
 interface Note { id: number; text: string; why: string; action: string; undo: () => void }
 interface Flight { id: number; x: number; y: number; tx: number; ty: number }
-interface Pending { id: number; cause: string; text: string; before: Map<string, string>; undo: () => void }
+interface Pending { id: number; cause: string; why: string; text: string; before: Map<string, string>; undo: () => void }
 
 // A short sitting on a phone (a lunch break), a longer one on a laptop. It's shown as a guess.
 const firstSitting = (phone: boolean): Sitting[] => [{ id: 'now', when: 'Now', min: phone ? 10 : 20 }]
@@ -100,7 +100,6 @@ export default function App() {
   const [rework, setRework] = useState<{ cause: string; stage: number } | null>(null)
   const [reply, setReply] = useState<string | null>(null)
   const [log, setLog] = useState<LogEntry[]>([])
-  const [diff, setDiff] = useState<LogEntry | null>(null)
   const [fresh, setFresh] = useState<Set<string>>(new Set())
   // why each piece the guide swapped in is there, kept on the card until it changes again
   const [because, setBecause] = useState<Record<string, string>>({})
@@ -155,7 +154,7 @@ export default function App() {
     [goal, level, chosen, profile],
   )
   const whyItem = (it: Item): Why[] => [
-    ...(because[it.stop.lesson.id] ? [{ icon: 'changed' as const, text: becauseText(because[it.stop.lesson.id]) }] : []),
+    ...(because[it.stop.lesson.id] ? [{ icon: 'changed' as const, text: because[it.stop.lesson.id] }] : []),
     ...whyChips(it.stop, it.i, profile, path),
   ]
 
@@ -170,11 +169,6 @@ export default function App() {
     const t = window.setTimeout(() => setNote(null), 6000)
     return () => clearTimeout(t)
   }, [note])
-  useEffect(() => {
-    if (!diff) return
-    const t = window.setTimeout(() => setDiff(null), 9000)
-    return () => clearTimeout(t)
-  }, [diff])
   useEffect(() => {
     if (!fresh.size) return
     const t = window.setTimeout(() => setFresh(new Set()), 8000)
@@ -239,18 +233,19 @@ export default function App() {
     setPhase('explore'); setProfile({}); setGuessed({}); setAsked([])
     setAdded([]); setSittings(firstSitting(narrow)); setMinutesSource('guess'); setSubs({}); setFormats({}); setPref('auto')
     setMuted([]); setDone([]); setLearned([])
-    setThinking(false); setBusy(null); setRework(null); setReply(null); setLog([]); setDiff(null); setBecause({}); setNote(null)
+    setThinking(false); setBusy(null); setRework(null); setReply(null); setLog([]); setBecause({}); setNote(null)
     setOffline('no'); setFocus(0); openTab('path'); showTour(null)
   }
 
   // ----- the guide reworks the path: it shows its work, makes the change, logs what moved -----
-  const act = (text: string, apply: () => void, target: string | null = null, cause = 'You asked') => {
+  // `why` is what a piece that arrives says about itself; by default it's the cause
+  const act = (text: string, apply: () => void, target: string | null = null, cause = 'You asked', why = becauseText(cause)) => {
     const before = { profile, guessed, pref, sittings, subs, formats, muted, done, learned, because }
     const id = ++seq.current
     const undo = () => {
       setProfile(before.profile); setGuessed(before.guessed); setPref(before.pref); setSittings(before.sittings); setSubs(before.subs)
       setFormats(before.formats); setMuted(before.muted); setDone(before.done); setLearned(before.learned); setBecause(before.because)
-      setLog((x) => x.filter((e) => e.id !== id)); setDiff(null); setFresh(new Set()); setReply('Put that back the way it was.')
+      setLog((x) => x.filter((e) => e.id !== id)); setFresh(new Set()); setReply('Put that back the way it was.')
     }
     setBusy(target); setThinking(true)
     // what it heard first, then each stage ticking off, before anything moves
@@ -259,7 +254,7 @@ export default function App() {
     timers.later(() => setRework((r) => r && { ...r, stage: 1 }), REWORK_STEP_MS)
     timers.later(() => setRework((r) => r && { ...r, stage: 2 }), REWORK_STEP_MS * 2)
     timers.later(() => {
-      pending.current = { id, cause, text, before: titlesOf(itemsRef.current), undo }
+      pending.current = { id, cause, why, text, before: titlesOf(itemsRef.current), undo }
       apply()
       setBusy(null); setThinking(false); setReply(text); setRework(null)
       // the effect below logs what moved; if nothing on the path did, log it here
@@ -268,7 +263,7 @@ export default function App() {
         if (p?.id !== id) return
         pending.current = null
         const e = entryOf(p, [], [])
-        setLog((l) => [e, ...l]); setDiff(e)
+        setLog((l) => [e, ...l])
       }, 120)
     }, REWORK_STEP_MS * 3)
   }
@@ -278,10 +273,10 @@ export default function App() {
     pending.current = null
     const after = titlesOf(items)
     const e = entryOf(p, [...after].filter(([k]) => !p.before.has(k)).map(([, t]) => t), [...p.before].filter(([k]) => !after.has(k)).map(([, t]) => t))
-    setLog((l) => [e, ...l]); setDiff(e)
+    setLog((l) => [e, ...l])
     const arrived = items.filter((it) => !p.before.has(it.m.key)).map((it) => it.stop.lesson.id)
     setFresh(new Set(arrived))
-    if (arrived.length) setBecause((b) => ({ ...b, ...Object.fromEntries(arrived.map((id) => [id, p.cause])) }))
+    if (arrived.length) setBecause((b) => ({ ...b, ...Object.fromEntries(arrived.map((id) => [id, p.why])) }))
   }, [items])
 
   const change = (cs: Change[], cause = 'You asked') => act(sayChanges(cs), () => cs.forEach((c) => {
@@ -296,17 +291,22 @@ export default function App() {
     change(cs, `You asked: “${t}”`)
   }
   const setWork = (w: WorkAnswer, cause: string) => act(WORK_SAY[w], () => pickWork(w), null, cause)
+  // your week answers two things at once: the work you do and how much you already know
+  const week = (w: (typeof WEEK)[number]) => act(w.say, () => {
+    pickWork(w.work)
+    if (w.level) { setProfile((p) => ({ ...p, level: w.level })); unguess('level') }
+  }, null, w.cause)
 
   // Asking about one piece: another format, or a swap for something easier, deeper or shorter.
   const ask = (it: Item, a: Ask) => {
     const l = it.stop.lesson
     if (a === 'format') {
       const nf = nextFormat(it.fmt)
-      return act(`Made “${l.title}” ${FMT_NAME[nf]}`, () => setFormats((f) => ({ ...f, [l.id]: nf })), l.id, 'You asked for another format')
+      return act(`Made “${l.title}” ${FMT_NAME[nf]}`, () => setFormats((f) => ({ ...f, [l.id]: nf })), l.id, 'You asked for another format', 'Another format, as you asked')
     }
     const alt = alternative(l, a, path.map((x) => x.lesson.id))
     if (!alt) return setReply(NO_ALTERNATIVE[a])
-    act(SWAP_SAY[a](alt.title, minutesOf(alt)), () => setSubs((s) => swapIn(s, l.id, alt.id)), l.id, SWAP_CAUSE[a])
+    act(SWAP_SAY[a](alt.title, minutesOf(alt)), () => setSubs((s) => swapIn(s, l.id, alt.id)), l.id, SWAP_CAUSE[a], SWAP_WHY[a])
   }
 
   // How a piece went teaches the guide something about you, and reshapes the rest of the topic.
@@ -335,7 +335,7 @@ export default function App() {
       return act(`Got it, you know ${topic.toLowerCase()}. Skipped ${plural(n, 'piece')} on it and moved the next step up.`, () => {
         setMuted((m) => [...m, topic])
         learn([topic], 'knows', `Skipped ${n}`)
-      }, l.id, said)
+      }, l.id, said, `Moved up: you already know ${lowerKeepAI(topic)}`)
     }
     const taken = path.map((x) => x.lesson.id)
     const swaps = same.flatMap((x) => {
@@ -350,7 +350,7 @@ export default function App() {
       setDone((d) => [...d, l.id])
       setSubs((s) => swaps.reduce((acc, [shown, next]) => swapIn(acc, shown, next), s))
       learn([topic], sg, n ? `Changed ${n}` : 'Noted')
-    }, l.id, said)
+    }, l.id, said, sg === 'easy' ? `Harder, since ${lowerKeepAI(topic)} came easy` : `Gentler, since ${lowerKeepAI(topic)} was hard to follow`)
   }
   // "I know this step already": every topic in the step is known, so the step goes and the next moves up
   const skipStep = () => {
@@ -360,7 +360,7 @@ export default function App() {
     act(`Got it, you know this. Skipped ${its.length} pieces and moved the next step up.`, () => {
       setMuted((m) => [...m, ...topics])
       learn(topics, 'knows', 'Skipped')
-    }, null, 'You said you know this step')
+    }, null, 'You said you know this step', 'Moved up: you already know the last step')
   }
   const forget = (id: number) => {
     const x = learned.find((y) => y.id === id)
@@ -373,8 +373,17 @@ export default function App() {
   // ----- what the guide shows back -----
   const known = goal && level ? { goal, level } : null
   const seen: Seen | null = known && { ...known, context, work: profile.work, workKey, guessed, pref, layout, sittings, minutesSource }
-  const pace = (m: number) => { setMinutesSource('you'); change([{ kind: 'minutes', value: m }], 'You changed your pace') }
-  const changes: Changes = { change, setWork, pickWork, unguess, fix, pace }
+  // Changing your time goes through the guide too, so you see what it does: what fits now, and when you'd finish.
+  const retime = (id: string, m: number) => {
+    const next = sittings.map((x) => (x.id === id ? { ...x, min: m } : x))
+    const weeks = estimate(goal ?? 'understand', level ?? 'new', next.reduce((a, x) => a + x.min, 0)).weeks
+    const fits = fill(itemsOf(path, layout, pref, formats), next).filter((it) => it.slot === next.findIndex((x) => x.id === id)).length
+    const when = id === 'now' ? 'right now' : next.find((x) => x.id === id)?.when.toLowerCase() ?? ''
+    const finish = weeks === est.weeks ? `Still about ${plural(weeks, 'week')} to your goal.` : `You'd finish in about ${plural(weeks, 'week')} instead of ${est.weeks}.`
+    act(`${plural(fits, 'piece')} fit in ${m} min. ${finish}`, () => { setSittings(next); setMinutesSource('you') }, null, `You have ${m} min ${when}`)
+  }
+  const pace = (m: number) => retime('now', m)
+  const changes: Changes = { change, setWork, pickWork, week, unguess, pace }
   const suggestions = seen ? suggestionsFor(seen, changes) : []
   const facts = seen && phase === 'ready' ? factsFor(seen) : []
   const personaRows = seen ? personaRowsFor(seen, changes) : []
@@ -408,7 +417,7 @@ export default function App() {
     : tour !== null && tourHeads[tour] ? tourHeads[tour]
     : {
       status: thinking ? 'Reworking' : 'Your path',
-      title: `Your path to ${goal ? GOAL_TO[goal] : 'your goal'}`,
+      title: goal ? destination(goal, context === 'regulated') : 'Your path',
       meta: `About ${plural(est.weeks, 'week')} at ${perDay} min a day · laid out ${LAYOUT_NAME[layout].toLowerCase()}`,
     }
 
@@ -445,9 +454,9 @@ export default function App() {
     <Builder
       chosen={chosen} minutes={sittings[0].min} decoys={decoys}
       criteria={[
-        ...(goal ? [{ id: 'goal' as const, text: GOAL_SHORT[goal] }] : []),
-        ...(level ? [{ id: 'level' as const, text: LEVEL_SHORT[level] }] : []),
-        ...(context ? [{ id: 'context' as const, text: CONTEXT_SHORT[context] }] : []),
+        ...(goal ? [{ id: 'goal' as const, ...REASON.goal[goal] }] : []),
+        ...(level ? [{ id: 'level' as const, ...REASON.level[level] }] : []),
+        ...(context === 'regulated' ? [{ id: 'context' as const, ...REASON.regulated(fromEmail?.company) }] : []),
       ]}
       onDone={() => { setPhase('ready'); showTour(0) }}
     />
@@ -474,7 +483,7 @@ export default function App() {
           <AnimatePresence>{rework && <Rework key="rework" cause={rework.cause} stage={rework.stage} />}</AnimatePresence>
           <Path
             layout={layout} plan={plan} items={items} sittings={sittings.map((x) => x.when)} busy={busy} fresh={fresh}
-            because={Object.fromEntries(Object.entries(because).map(([k, v]) => [k, becauseText(v)]))} stepMin={est.steps} diff={diff} focus={step}
+            because={because} stepMin={est.steps} focus={step}
             ask={(
               <GuideBubble
                 step={plan[step]?.title ?? ''} thinking={thinking} reply={reply} last={log[0] ?? null} suggestions={suggestions}
@@ -542,7 +551,7 @@ export default function App() {
           {phase === 'ready' && tab === 'path' && tour === null && (
             <Dock
               items={items} sittings={sittings} guess={minutesSource === 'guess'}
-              onMinutes={(id, m) => { setSittings((x) => x.map((y) => (y.id === id ? { ...y, min: m } : y))); setMinutesSource('you') }}
+              onMinutes={retime}
               onAdd={(when) => setSittings((x) => [...x, { id: when, when, min: 20 }])}
               onRemove={(id) => setSittings((x) => x.filter((y) => y.id !== id))}
               onStart={() => setSession(true)}

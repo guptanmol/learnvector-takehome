@@ -16,15 +16,15 @@ export interface Material {
 
 export const KIND_LABEL: Record<Kind, string> = { video: 'Lesson', game: 'Game', drill: 'Practice with AI', quiz: 'Quiz', case: 'Case study', template: 'Template' }
 
-const BY_TOPIC: Record<string, { quiz: { q: string; a: string[] }; case: string; template: string }> = {
-  'How marketing works': { quiz: { q: 'What comes first in a funnel?', a: ['Awareness', 'Retention', 'Referral'] }, case: 'A note-taking app’s first 1,000 users', template: 'One-page marketing plan' },
-  Positioning: { quiz: { q: 'A positioning line should name…', a: ['Who it’s for', 'Every feature', 'The price'] }, case: 'Two apps, same features, different buyers', template: 'Positioning sentence' },
-  'Customer research': { quiz: { q: 'Which question leads the witness?', a: ['“Wouldn’t this save you time?”', '“Walk me through last week”', '“What did you try before?”'] }, case: 'Five interviews that changed a roadmap', template: 'Interview script' },
-  'Funnels and growth': { quiz: { q: 'Signups up, revenue flat. Look at…', a: ['Activation', 'Ad spend', 'The logo'] }, case: 'Finding a 40% drop at checkout', template: 'Funnel audit sheet' },
-  'Writing with AI': { quiz: { q: 'A good first prompt adds…', a: ['Audience and goal', 'More adjectives', '“Be creative”'] }, case: 'A bland launch email, rewritten with AI', template: 'Prompt pack: first drafts' },
-  'AI in campaign work': { quiz: { q: '20 AI variants. Test…', a: ['The 3 most different', 'All 20', 'The longest'] }, case: 'One brief, a month of ads', template: 'Campaign brief for AI' },
-  'AI in regulated teams': { quiz: { q: 'What will legal flag?', a: ['“Guaranteed returns”', '“Learn more”', '“Apply today”'] }, case: 'An AI ad that failed review', template: 'Claims checklist' },
-  'AI for research': { quiz: { q: 'From 200 reviews, ask AI for…', a: ['Themes with quotes', 'A star average', 'A one-line summary'] }, case: 'From a review dump to a roadmap', template: 'Review-mining prompt' },
+const BY_TOPIC: Record<string, { quiz: { title: string; q: string; a: string[] }; case: string; template: string }> = {
+  'How marketing works': { quiz: { title: 'Where a funnel starts', q: 'What comes first in a funnel?', a: ['Awareness', 'Retention', 'Referral'] }, case: 'A note-taking app’s first 1,000 users', template: 'One-page marketing plan' },
+  Positioning: { quiz: { title: 'What a positioning line needs', q: 'A positioning line should name…', a: ['Who it’s for', 'Every feature', 'The price'] }, case: 'Two apps, same features, different buyers', template: 'Positioning sentence' },
+  'Customer research': { quiz: { title: 'Which question is leading?', q: 'Which question leads the witness?', a: ['“Wouldn’t this save you time?”', '“Walk me through last week”', '“What did you try before?”'] }, case: 'Five interviews that changed a roadmap', template: 'Interview script' },
+  'Funnels and growth': { quiz: { title: 'Why isn’t revenue growing?', q: 'Signups up, revenue flat. Look at…', a: ['Activation', 'Ad spend', 'The logo'] }, case: 'Finding a 40% drop at checkout', template: 'Funnel audit sheet' },
+  'Writing with AI': { quiz: { title: 'What a first prompt needs', q: 'A good first prompt adds…', a: ['Audience and goal', 'More adjectives', '“Be creative”'] }, case: 'A bland launch email, rewritten with AI', template: 'Prompt pack: first drafts' },
+  'AI in campaign work': { quiz: { title: 'Which AI variants to test', q: '20 AI variants. Test…', a: ['The 3 most different', 'All 20', 'The longest'] }, case: 'One brief, a month of ads', template: 'Campaign brief for AI' },
+  'AI in regulated teams': { quiz: { title: 'What legal will flag', q: 'What will legal flag?', a: ['“Guaranteed returns”', '“Learn more”', '“Apply today”'] }, case: 'An AI ad that failed review', template: 'Claims checklist' },
+  'AI for research': { quiz: { title: 'What to ask AI about reviews', q: 'From 200 reviews, ask AI for…', a: ['Themes with quotes', 'A star average', 'A one-line summary'] }, case: 'From a review dump to a roadmap', template: 'Review-mining prompt' },
 }
 
 export function materialsOf(l: Lesson): Material[] {
@@ -33,7 +33,7 @@ export function materialsOf(l: Lesson): Material[] {
     { key: `${l.id}-video`, lesson: l.id, kind: 'video', title: l.title, min: l.videoMin },
     { key: `${l.id}-practice`, lesson: l.id, kind: l.practice === 'game' ? 'game' : 'drill', title: l.practiceLabel, min: l.practiceMin },
     ...(t ? [
-      { key: `${l.id}-quiz`, lesson: l.id, kind: 'quiz' as const, title: t.quiz.q, q: t.quiz, min: 1 },
+      { key: `${l.id}-quiz`, lesson: l.id, kind: 'quiz' as const, title: t.quiz.title, q: t.quiz, min: 1 },
       { key: `${l.id}-case`, lesson: l.id, kind: 'case' as const, title: t.case, min: 5 },
       { key: `${l.id}-template`, lesson: l.id, kind: 'template' as const, title: t.template, min: 2 },
     ] : []),

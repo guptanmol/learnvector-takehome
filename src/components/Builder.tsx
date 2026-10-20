@@ -1,22 +1,21 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { BookOpen, Check, FastForward, FileText, Gamepad2, ListChecks, MessageSquareText, Play, X, type LucideIcon } from 'lucide-react'
+import { Check, FastForward, X } from 'lucide-react'
 import { ThinkingOrb } from 'thinking-orbs'
 import { lessonById } from '../data'
 import { KIND_LABEL, materials, materialsOf, type Kind, type Material } from '../materials'
 import media from '../media.json'
 import { FACT_COLOR, KIND_COLOR } from '../colors'
 import { PHONE, useMedia } from '../hooks'
+import { KIND_ICON } from '../icons'
 import type { Crit } from '../model'
 
 const clips = media as Record<string, { poster: string; loop: string }>
 
-const KIND_ICON: Record<Kind, LucideIcon> = { video: Play, game: Gamepad2, drill: MessageSquareText, quiz: ListChecks, case: BookOpen, template: FileText }
-
 interface Props {
   chosen: string[] // lessons in plan order
   decoys: { id: string; why: string; about: Crit }[] // lessons that look close but don't fit, and why
-  criteria: { id: Crit; text: string }[] // what the guide understood about you, checked one at a time
+  criteria: { id: Crit; text: string; so: string }[] // what the guide knows, and what it does about it, checked one at a time
   minutes: number
   onDone: () => void
 }
@@ -119,9 +118,9 @@ export function Builder({ chosen, decoys, criteria, minutes, onDone }: Props) {
   }, [phase, filler, phone])
 
   const shown = phase === 2 ? [...picked].sort((a, b) => chosen.indexOf(a.m.lesson) - chosen.indexOf(b.m.lesson)) : picked
-  const activeText = criteria.find((c) => c.id === active)?.text
+  const reason = criteria.find((c) => c.id === active)?.so
   const status = phase === 0 ? 'Reading what you told me' : phase === 1 ? 'Going through the library' : `Ordering your picks · ${minutes} min today`
-  const sub = activeText ? `${found[active!] ?? 0} match “${activeText}”` : phase === 2 ? 'Putting them in the order you’ll learn them' : 'Starting with what you told me'
+  const sub = reason ? `${reason} · ${found[active!] ?? 0} found` : phase === 2 ? 'Putting them in the order you’ll learn them' : 'Starting with what you told me'
 
   return (
     <section className="builder" aria-live="polite">

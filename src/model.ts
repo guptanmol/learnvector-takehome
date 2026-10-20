@@ -104,21 +104,21 @@ export interface Milestone { title: string; why: string; stops: Stop[] }
 
 const ROUTES: Record<GoalKey, (w: WorkKey) => [string, string][]> = {
   understand: () => [
-    ['See the whole picture', 'By the end, you’ll know how the parts of marketing fit together.'],
-    ['Learn the core moves', 'By the end, you’ll use the ideas marketers rely on every week.'],
-    ['Try it on something real', 'By the end, you’ll have used it on a product you know.'],
+    ['See the whole picture', 'You’ll know how the parts of marketing fit together.'],
+    ['Learn the core moves', 'You’ll use the ideas marketers rely on every week.'],
+    ['Try it on something real', 'You’ll have used it on a product you know.'],
   ],
   ai: (w) => [
-    ['Get good at prompting', 'By the end, you’ll get a usable first draft from AI every time.'],
-    ['Use AI in your campaigns', 'By the end, AI will handle your research, variants and planning.'],
+    ['Get good at prompting', 'You’ll get a usable first draft from AI every time.'],
+    ['Use AI in your campaigns', 'AI will handle your research, variants and planning.'],
     w === 'regulated'
-      ? ['Get it approved', 'By the end, your AI copy will get through legal review.']
-      : ['Make it trustworthy', 'By the end, you’ll check AI output before anyone else sees it.'],
+      ? ['Get it approved', 'Your AI copy will get through legal review.']
+      : ['Make it trustworthy', 'You’ll check AI output before anyone else sees it.'],
   ],
   better: () => [
-    ['Sharpen your research', 'By the end, you’ll ask customers questions that get honest answers.'],
-    ['Read your numbers', 'By the end, you’ll spot where people drop off, and why.'],
-    ['Run better tests', 'By the end, you’ll tell a real win from luck.'],
+    ['Sharpen your research', 'You’ll ask customers questions that get honest answers.'],
+    ['Read your numbers', 'You’ll spot where people drop off, and why.'],
+    ['Run better tests', 'You’ll tell a real win from luck.'],
   ],
 }
 

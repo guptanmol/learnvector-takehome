@@ -8,6 +8,37 @@ export const LEVEL_SHORT: Record<Level, string> = { new: 'New to marketing', pra
 export const CONTEXT_SHORT: Record<Context, string> = { regulated: 'Needs legal approval', general: 'No legal approval' }
 export const GOAL_TO: Record<GoalKey, string> = { understand: 'understanding marketing', ai: 'using AI at work', better: 'a better marketing job' }
 
+// The path's title names where it ends up, not what you picked.
+export const destination = (goal: GoalKey, regulated: boolean): string => ({
+  understand: 'From the big picture to a plan of your own',
+  ai: regulated ? 'From first prompts to AI campaigns that pass review' : 'From first prompts to AI-run campaigns',
+  better: 'From better questions to tests you can trust',
+})[goal]
+
+// What the guide reads from each thing it knows, said while it searches the library.
+export const REASON = {
+  goal: {
+    understand: { text: 'Curious about marketing', so: 'You want the whole picture, so I’m starting with how the parts fit' },
+    ai: { text: 'Wants AI at work', so: 'You want AI to do real work, so I’m putting hands-on prompting first' },
+    better: { text: 'Wants to get sharper', so: 'You want to get better at the job, so I’m looking for research, numbers and tests' },
+  } as Record<GoalKey, { text: string; so: string }>,
+  level: {
+    new: { text: 'New to marketing', so: 'Nothing gets assumed, so every piece starts from the idea' },
+    practitioner: { text: 'Knows the basics', so: 'You know the basics, so I’m skipping the 101s' },
+  } as Record<Level, { text: string; so: string }>,
+  regulated: (company?: string) => ({
+    text: company ? `At ${company}` : 'Works in a regulated team',
+    so: 'Banks review marketing before it goes out, so I’m adding pieces on getting copy approved',
+  }),
+}
+
+// One question about your week tells the guide your work and your experience together.
+export const WEEK: { label: string; work: WorkAnswer; level?: Level; say: string; cause: string }[] = [
+  { label: 'Building the product', work: 'software', level: 'new', say: 'Starting from how marketing works, with examples from apps', cause: 'You build the product' },
+  { label: 'Running campaigns', work: 'marketing', level: 'practitioner', say: 'Skipping the basics and using campaign examples', cause: 'You run campaigns' },
+  { label: 'Something else', work: 'other', say: 'Keeping the examples general', cause: 'Your week is something else' },
+]
+
 // what one answer says about experience, until you say otherwise
 export const LEVEL_GUESS: Record<GoalKey, Level> = { understand: 'new', ai: 'practitioner', better: 'practitioner' }
 
@@ -49,6 +80,14 @@ export const SWAP_CAUSE: Record<Swap, string> = {
   deeper: 'You asked for deeper',
   shorter: 'You asked for something shorter',
   other: 'You asked to swap it',
+}
+
+// What a piece the guide swapped in says about why it's there.
+export const SWAP_WHY: Record<Swap, string> = {
+  easier: 'Easier, as you asked',
+  deeper: 'Harder, as you asked',
+  shorter: 'Shorter, as you asked',
+  other: 'Swapped in, as you asked',
 }
 
 export const SIGNAL_SAID: Record<Signal, string> = {

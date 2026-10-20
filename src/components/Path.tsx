@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowRight, RefreshCw, Sparkles, Undo2 } from 'lucide-react'
+import { ArrowRight, Clock3, RefreshCw } from 'lucide-react'
 import { ThinkingOrb } from 'thinking-orbs'
 import { gainOf } from '../materials'
 import type { Milestone } from '../model'
@@ -8,7 +8,6 @@ import { hours, stepsOf, type Ask, type Item, type Layout, type Signal } from '.
 import { KindBadge, TimeBadge } from './Badges'
 import { MaterialTile } from './Builder'
 import { CardAsk } from './CardAsk'
-import type { LogEntry } from './GuidePanel'
 
 interface PathProps {
   layout: Layout
@@ -24,7 +23,6 @@ interface PathProps {
   onAsk: (it: Item, a: Ask) => void
   onSignal: (it: Item, s: Signal) => void
   ask?: ReactNode // the guide, anchored to this step
-  diff: LogEntry | null // the last change the guide made, shown where it happened
 }
 
 // One step of your path at a time. The step is picked on the journey above; how it's laid out
@@ -52,28 +50,21 @@ export function Path(p: PathProps) {
       >
         <header className="path__head">
           {p.ask && <div className="path__ask">{p.ask}</div>}
-          <span className="path__eyebrow">
-            <span>Step {p.focus + 1} of {p.plan.length}</span>
-            <span>About {hours(p.stepMin[p.focus] ?? 0)}</span>
-            {/* lessons live in topics; the step says which ones it draws from */}
-            <span className="path__topics" title="Topics in this step">{[...new Set(its.map((it) => it.stop.lesson.topic))].join(' · ')}</span>
-            <AnimatePresence>
-              {p.diff && (
-                <motion.span key={p.diff.id} className="hchip hchip--changed" title={`${p.diff.cause}: ${p.diff.text}`} initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} transition={{ type: 'spring', stiffness: 420, damping: 22 }}>
-                  <Sparkles size={12} strokeWidth={2.3} />Updated just now
-                  <button onClick={p.diff.undo}><Undo2 size={12} strokeWidth={2.4} />Undo</button>
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </span>
           <h3>{m?.title}</h3>
-          <p>{m?.why}</p>
+          <p className="path__goal">{m?.why}</p>
+          <div className="path__chips">
+            <span className="pchip"><Clock3 size={12} strokeWidth={2.2} />About {hours(p.stepMin[p.focus] ?? 0)}</span>
+            {topicsOf(its).map((t) => <span key={t} className="pchip pchip--topic">{t}</span>)}
+          </div>
         </header>
         {p.layout === 'toolkit' ? <Toolkit {...sub} /> : <Sequence {...sub} />}
       </motion.section>
     </AnimatePresence>
   )
 }
+
+// The topics a step draws from, in path order.
+const topicsOf = (its: Item[]) => [...new Set(its.map((it) => it.stop.lesson.topic))]
 
 type Sub = PathProps & { its: Item[]; isNew: (it: Item) => boolean }
 

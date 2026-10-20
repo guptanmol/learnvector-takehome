@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Check, Flag, MapPin, ShieldCheck } from 'lucide-react'
 import type { Milestone } from '../model'
 import { stepsOf, type Item } from '../plan'
+import { plural } from '../text'
 
 interface Props {
   from: string // where you are now
@@ -38,7 +39,7 @@ export function Journey({ from, to, legal, plan, items, done, focus, onFocus }: 
           <motion.span className="stop__node" animate={{ scale: focus === i ? 1.1 : 1 }} transition={{ type: 'spring', stiffness: 420, damping: 20 }}>
             {i + 1}
           </motion.span>
-          <span className="stop__label"><b title={`${s.its.length} pieces · ${s.min} min`}>{s.m.title}</b></span>
+          <span className="stop__label"><b title={`${s.its.length} pieces · ${s.min} min`}>{s.m.title}</b><small>{plural(s.its.length, 'piece')}</small></span>
         </button>
       ))}
 

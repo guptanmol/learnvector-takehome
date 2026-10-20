@@ -5,7 +5,7 @@ import { X } from 'lucide-react'
 import { ThinkingOrb } from 'thinking-orbs'
 import { PHONE, useDark, useMedia } from '../hooks'
 
-export interface Check { id: 'goal' | 'level' | 'context' | 'work'; q: string; options: { label: string; run: () => void }[] }
+export interface Check { id: 'goal' | 'level' | 'context' | 'work'; q: string; options: { label: string; run: () => void }[]; label?: string }
 
 const WAIT_S = 10 // how long a question waits before it lets itself out
 
@@ -40,7 +40,7 @@ export function GuessCheck({ check, onDismiss }: { check: Check; onDismiss: () =
     >
       <div className="gcheck__top">
         <span className="gcheck__orb" aria-hidden><ThinkingOrb state="listening" size={20} theme={dark ? 'light' : 'dark'} color={dark ? '#6d3fe0' : '#c4b2ff'} dotSize={1.15} /></span>
-        <span className="gcheck__k">Quick question</span>
+        <span className="gcheck__k">{check.label ?? 'Quick question'}</span>
         <button className="gcheck__x" onClick={onDismiss} aria-label="Not now"><X size={15} strokeWidth={2.2} /></button>
       </div>
       <p className="gcheck__q">{check.q}</p>

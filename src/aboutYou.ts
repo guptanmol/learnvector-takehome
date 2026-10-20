@@ -5,7 +5,7 @@ import type { Fact } from './components/AboutBar'
 import type { Check } from './components/GuessCheck'
 import type { Suggestion } from './components/GuideBubble'
 import type { PersonaRow } from './components/GuidePanel'
-import { CONTEXT_SHORT, GOAL_SHORT, LAYOUT_STYLE, LEVEL_SHORT, PREF_STYLE } from './guide'
+import { CONTEXT_SHORT, GOAL_SHORT, LAYOUT_STYLE, LEVEL_SHORT, PREF_STYLE, WEEK } from './guide'
 import {
   CONTEXT_LABEL, GOAL_KEYS, GOAL_LABEL, LEVEL_LABEL,
   type Context, type GoalKey, type Guessed, type Level, type WorkAnswer, type WorkKey,
@@ -29,8 +29,8 @@ export interface Changes {
   change: (cs: Change[], cause: string) => void
   setWork: (w: WorkAnswer, cause: string) => void
   pickWork: (w: WorkAnswer) => void // quietly, without reworking the path
+  week: (w: (typeof WEEK)[number]) => void
   unguess: (what: keyof Guessed) => void
-  fix: (what: 'goal' | 'level' | 'context', key: string) => void
   pace: (min: number) => void
 }
 
@@ -61,7 +61,8 @@ export function suggestionsFor(s: Seen, c: Changes): Suggestion[] {
   ]
 }
 
-// Questions about what the guide guessed, in the order they're asked.
+// What the guide checks with you, in order: what you're here for (if you didn't say), your week
+// (if your email didn't tell it), and a note on any step it added because of where you work.
 export function checksFor(s: Seen, c: Changes, first: string, company?: string): Check[] {
   const checks: (Check | null)[] = [
     s.guessed.goal ? {
@@ -71,41 +72,16 @@ export function checksFor(s: Seen, c: Changes, first: string, company?: string):
     } : null,
     s.guessed.work ? {
       id: 'work',
-      q: `What kind of work do you do, ${first}?`,
-      options: [
-        { label: 'Software', run: () => c.setWork('software', 'You told me your work') },
-        { label: 'Marketing', run: () => c.setWork('marketing', 'You told me your work') },
-        { label: 'Other', run: () => c.pickWork('other') },
-      ],
+      q: `What does a normal week look like for you, ${first}?`,
+      options: WEEK.map((w) => ({ label: w.label, run: () => c.week(w) })),
     } : null,
-    s.guessed.level ? (s.level === 'new' ? {
-      id: 'level',
-      q: 'I’ll start from the ground up, so nothing is assumed. Does that suit you?',
-      options: [
-        { label: 'Sounds good', run: () => c.unguess('level') },
-        { label: 'I know some already', run: () => c.change([{ kind: 'level', value: 'practitioner' }], 'You said you know the basics') },
-      ],
-    } : {
-      id: 'level',
-      q: 'I’m assuming you already know the basics. Is that right?',
-      options: [
-        { label: 'Yes', run: () => c.unguess('level') },
-        { label: 'Start from the beginning', run: () => c.change([{ kind: 'level', value: 'new' }], 'You asked to start from the beginning') },
-      ],
-    }) : null,
     s.guessed.context ? {
       id: 'context',
-      q: `Since you’re at ${company ?? 'a bank'}, I added a step on getting legal sign-off. Keep it?`,
+      label: 'Why I added a step',
+      q: `You’re at ${company ?? 'a bank'}. Banks usually review marketing before it goes out, so I added a short step on getting AI-written copy through review.`,
       options: [
         { label: 'Keep it', run: () => c.unguess('context') },
-        { label: 'Not needed', run: () => c.change([{ kind: 'context', value: 'general' }], 'You said no legal sign-off') },
-      ],
-    } : !s.context && s.goal !== 'understand' ? {
-      id: 'context',
-      q: 'Does your marketing need legal sign-off?',
-      options: [
-        { label: 'Yes', run: () => c.change([{ kind: 'context', value: 'regulated' }], 'You said your work needs legal sign-off') },
-        { label: 'No', run: () => c.fix('context', 'general') },
+        { label: 'Remove it', run: () => c.change([{ kind: 'context', value: 'general' }], 'You removed the review step') },
       ],
     } : null,
   ]
