@@ -1,0 +1,66 @@
+{
+  "l1": {
+    "poster": "/thumbs/l1.jpg",
+    "loop": "/thumbs/l1.mp4"
+  },
+  "l2": {
+    "poster": "/thumbs/l2.jpg",
+    "loop": "/thumbs/l2.mp4"
+  },
+  "l3": {
+    "poster": "/thumbs/l3.jpg",
+    "loop": "/thumbs/l3.mp4"
+  },
+  "l4": {
+    "poster": "/thumbs/l4.jpg",
+    "loop": "/thumbs/l4.mp4"
+  },
+  "l5": {
+    "poster": "/thumbs/l5.jpg",
+    "loop": "/thumbs/l5.mp4"
+  },
+  "l6": {
+    "poster": "/thumbs/l6.jpg",
+    "loop": "/thumbs/l6.mp4"
+  },
+  "l7": {
+    "poster": "/thumbs/l7.jpg",
+    "loop": "/thumbs/l7.mp4"
+  },
+  "l8": {
+    "poster": "/thumbs/l8.jpg",
+    "loop": "/thumbs/l8.mp4"
+  },
+  "l9": {
+    "poster": "/thumbs/l9.jpg",
+    "loop": "/thumbs/l9.mp4"
+  },
+  "l10": {
+    "poster": "/thumbs/l10.jpg",
+    "loop": "/thumbs/l10.mp4"
+  },
+  "l11": {
+    "poster": "/thumbs/l11.jpg",
+    "loop": "/thumbs/l11.mp4"
+  },
+  "l12": {
+    "poster": "/thumbs/l12.jpg",
+    "loop": "/thumbs/l12.mp4"
+  },
+  "l13": {
+    "poster": "/thumbs/l13.jpg",
+    "loop": "/thumbs/l13.mp4"
+  },
+  "l14": {
+    "poster": "/thumbs/l14.jpg",
+    "loop": "/thumbs/l14.mp4"
+  },
+  "l15": {
+    "poster": "/thumbs/l15.jpg",
+    "loop": "/thumbs/l15.mp4"
+  },
+  "l16": {
+    "poster": "/thumbs/l16.jpg",
+    "loop": "/thumbs/l16.mp4"
+  }
+}
